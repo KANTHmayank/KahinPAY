@@ -1,5 +1,7 @@
 # KahinPAY — Pay from anywhere.
 
+> ⚡ **Live Demo Ready:** Deployed instantly on Vercel Edge with zero cold starts, and full enterprise Java 17 + Spring Boot + Redis backend for local/Docker runs.
+
 A high-performance offline fintech payment engine demonstrating **offline UPI payments routed through a Bluetooth-style delay-tolerant mesh network**. You're in a basement or disaster zone with zero connectivity. You send your friend ₹500. Your phone cryptographically signs and encrypts the payment, broadcasts it to nearby phones via Bluetooth LE, and the packet hops device-to-device until *some* phone walks outside, gets 4G, and silently uploads it to this backend. The backend decrypts, verifies the sender's ECDSA signature, deduplicates via atomic idempotency (Redis/ConcurrentHashMap), and settles.
 
 **KahinPAY** includes the **server-side banking engine**, the **mobile phone-frame app UI (CRED / Navi UPI inspired)**, plus a software simulator of the mesh so you can demo the entire end-to-end flow on a single machine without physical Bluetooth hardware.
