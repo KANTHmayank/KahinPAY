@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KahinPAY — Pay from anywhere.</title>
+
+    <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Design System CSS -->
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<div class="app-wrapper">
+
+    <!-- Top Branding & Architecture Bar -->
+    <header class="top-brand-bar">
+        <div class="brand-container">
+            <div class="brand-logo-icon" aria-hidden="true">
+                <!-- Inline SVG mesh signal icon -->
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#brandGrad)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <defs>
+                        <linearGradient id="brandGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#7C3AED"/>
+                            <stop offset="100%" stop-color="#06B6D4"/>
+                        </linearGradient>
+                    </defs>
+                    <path d="M5 12.55a11 11 0 0 1 14.08 0"></path>
+                    <path d="M1.42 9a16 16 0 0 1 21.16 0"></path>
+                    <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+                    <line x1="12" y1="20" x2="12.01" y2="20"></line>
+                </svg>
+            </div>
+            <div>
+                <div class="brand-title">
+                    <span class="word-kahin">Kahin</span><span class="word-pay">PAY</span>
+                </div>
+                <div class="brand-tagline">Pay from anywhere.</div>
+            </div>
+        </div>
+
+        <!-- Spec & Architecture Badges -->
+        <div class="spec-badges-bar">
+            <div class="spec-chip spec-chip-gradient">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+                <span>RSA-2048 OAEP + AES-256-GCM</span>
+            </div>
+            <div class="spec-chip spec-chip-gradient">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                </svg>
+                <span>ECDSA secp256r1</span>
+            </div>
+            <div class="spec-chip spec-chip-emerald" id="idempotencyBadge">
+                ⚡ Idempotency: In-Memory (ConcurrentHashMap)
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Cockpit (Phone App on Left + Developer Console on Right) -->
+    <main class="main-cockpit">
+
+        <!-- ================================================================
+             Phone Viewport & Native Fintech Mockup (CRED / Navi Inspired)
+             ================================================================ -->
+        <section class="phone-viewport" aria-label="KahinPAY Mobile Application">
+            <div class="phone-frame">
+
+                <!-- Physical Bezel Notch / Dynamic Island -->
+                <div class="phone-notch" aria-hidden="true">
+                    <div class="phone-camera-lens"></div>
+                </div>
+
+                <div class="phone-screen">
+
+                    <!-- Mobile Status Bar -->
+                    <div class="mobile-status-bar" aria-hidden="true">
+                        <span>9:41</span>
+                        <div class="mobile-status-right">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                                <rect x="2" y="14" width="3" height="7" rx="1"></rect>
+                                <rect x="7" y="10" width="3" height="11" rx="1"></rect>
+                                <rect x="12" y="6" width="3" height="15" rx="1"></rect>
+                                <rect x="17" y="2" width="3" height="19" rx="1"></rect>
+                            </svg>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="6.5 6.5 17.5 17.5 12 23 12 1 17.5 6.5 6.5 17.5"></polyline>
+                            </svg>
+                            <svg width="14" height="12" viewBox="0 0 24 24" fill="currentColor">
+                                <rect x="2" y="7" width="18" height="10" rx="2"></rect>
+                                <rect x="21" y="10" width="2" height="4" rx="1"></rect>
+                            </svg>
+                        </div>
+                    </div>
+
+                    <!-- App Top Nav -->
+                    <div class="app-top-nav">
+                        <div class="app-brand">
+                            <span class="word-kahin">Kahin</span><span class="word-pay">PAY</span>
+                        </div>
+                        <div class="connectivity-pill" id="phoneConnPill">
+                            <span class="pulsing-dot"></span>
+                            <span>Offline Mesh</span>
+                        </div>
+                    </div>
+
+                    <!-- 1. Hero Balance Card (Navi UPI / CRED Style) -->
+                    <div class="balance-card-hero">
+                        <div class="balance-label-row">
+                            <span class="balance-label">SECURE OFFLINE BALANCE</span>
+                            <span class="offline-ready-badge">
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                                Offline Ready
+                            </span>
+                        </div>
+                        <div class="balance-amount-display">
+                            <span class="currency-symbol">₹</span>
+                            <span id="heroBalanceDisplay">5,000.00</span>
+                        </div>
+                        <div>
+                            <span class="account-vpa-pill" id="heroSenderVpa">alice@demo</span>
+                        </div>
+                    </div>
+
+                    <!-- 2. Pay Card (Replaces Step 1 with Premium Fintech UI) -->
+                    <div class="pay-card-container">
+                        <div>
+                            <div class="card-section-label">PAY TO RECIPIENT</div>
+                            <!-- Avatar Selector Chips -->
+                            <div class="avatar-chips-row" role="radiogroup" aria-label="Select Receiver">
+                                <div class="avatar-chip active" onclick="selectReceiver('bob@demo', this)">
+                                    <div class="avatar-bubble">B</div>
+                                    <span class="avatar-name">Bob</span>
+                                </div>
+                                <div class="avatar-chip" onclick="selectReceiver('carol@demo', this)">
+                                    <div class="avatar-bubble" style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%);">C</div>
+                                    <span class="avatar-name">Carol</span>
+                                </div>
+                                <div class="avatar-chip" onclick="selectReceiver('dave@demo', this)">
+                                    <div class="avatar-bubble" style="background: linear-gradient(135deg, #3B82F6 0%, #06B6D4 100%);">D</div>
+                                    <span class="avatar-name">Dave</span>
+                                </div>
+                                <div class="avatar-chip" onclick="selectReceiver('alice@demo', this)">
+                                    <div class="avatar-bubble" style="background: linear-gradient(135deg, #10B981 0%, #3B82F6 100%);">A</div>
+                                    <span class="avatar-name">Alice</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Preserved underlying selects for complete backward compatibility -->
+                        <select id="senderVpa" class="hidden-sync-select">
+                            <option value="alice@demo" selected>alice@demo</option>
+                            <option value="bob@demo">bob@demo</option>
+                            <option value="carol@demo">carol@demo</option>
+                        </select>
+                        <select id="receiverVpa" class="hidden-sync-select">
+                            <option value="bob@demo" selected>bob@demo</option>
+                            <option value="carol@demo">carol@demo</option>
+                            <option value="dave@demo">dave@demo</option>
+                            <option value="alice@demo">alice@demo</option>
+                        </select>
+
+                        <!-- Amount Input -->
+                        <div>
+                            <div class="card-section-label">AMOUNT</div>
+                            <div class="amount-input-box">
+                                <span class="amount-symbol">₹</span>
+                                <input type="number" id="amount" value="500" class="large-amount-input" aria-label="Amount in Rupees">
+                            </div>
+                            <!-- Quick amount pills -->
+                            <div class="quick-amounts" style="margin-top: 8px;">
+                                <div class="quick-chip" onclick="setQuickAmount(100)">+₹100</div>
+                                <div class="quick-chip" onclick="setQuickAmount(500)">+₹500</div>
+                                <div class="quick-chip" onclick="setQuickAmount(1000)">+₹1,000</div>
+                                <div class="quick-chip" onclick="setQuickAmount(2000)">+₹2,000</div>
+                            </div>
+                        </div>
+
+                        <!-- UPI PIN Input (Dot Style) -->
+                        <div>
+                            <div class="card-section-label">SECURITY PIN</div>
+                            <div class="pin-section">
+                                <div class="pin-dots-container" aria-hidden="true">
+                                    <div class="pin-dot filled" id="pinDot1"></div>
+                                    <div class="pin-dot filled" id="pinDot2"></div>
+                                    <div class="pin-dot filled" id="pinDot3"></div>
+                                    <div class="pin-dot filled" id="pinDot4"></div>
+                                </div>
+                                <input type="password" id="pin" value="1234" maxlength="4" class="underlying-pin-input" aria-label="4 digit UPI PIN">
+                            </div>
+                        </div>
+
+                        <!-- Full-width Gradient Pay Button -->
+                        <button id="payButton" class="btn-pay-gradient" onclick="sendPacket()">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                            </svg>
+                            <span>Pay Securely (Offline)</span>
+                        </button>
+                    </div>
+
+                    <!-- 3. Payment Status Timeline (Step 1-4 Lighting Up) -->
+                    <div class="timeline-card" aria-label="Payment Hop Progression">
+                        <div class="timeline-steps">
+                            <div class="timeline-step" id="timelineStep1">
+                                <div class="step-marker">1</div>
+                                <div class="step-details">
+                                    <span class="step-title">Signed & Encrypted</span>
+                                    <span class="step-subtext">ECDSA secp256r1 + RSA-2048 / AES-GCM</span>
+                                </div>
+                            </div>
+                            <div class="timeline-step" id="timelineStep2">
+                                <div class="step-marker">2</div>
+                                <div class="step-details">
+                                    <span class="step-title">Hopping Mesh</span>
+                                    <span class="step-subtext">Epidemic gossip across Bluetooth peers</span>
+                                </div>
+                            </div>
+                            <div class="timeline-step" id="timelineStep3">
+                                <div class="step-marker">3</div>
+                                <div class="step-details">
+                                    <span class="step-title">Reached 4G Bridge</span>
+                                    <span class="step-subtext">Uploaded to bank backend API</span>
+                                </div>
+                            </div>
+                            <div class="timeline-step" id="timelineStep4">
+                                <div class="step-marker">4</div>
+                                <div class="step-details">
+                                    <span class="step-title">Settled on Ledger</span>
+                                    <span class="step-subtext">Deduplicated & settled atomically</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 4. Result Bottom Sheet (Navi UPI Style Modal) -->
+                    <div class="bottom-sheet-overlay" id="bottomSheetOverlay">
+                        <div class="bottom-sheet-content">
+                            <div class="result-icon-circle" id="sheetIconCircle">
+                                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#00D26A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            </div>
+                            <div class="result-status-title" id="sheetTitle">Payment Settled Offline</div>
+                            <div class="result-amount" id="sheetAmount">₹500.00</div>
+                            <div class="result-badge" id="sheetBadge">Verified via Mesh Bridge</div>
+                            <div class="result-meta-row" id="sheetMeta"></div>
+                            <button class="btn-dismiss-sheet" onclick="closeResultSheet()">Done</button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <!-- ================================================================
+             Developer Console & Mesh Controls (Pass 2)
+             Segmented Tabs: [Mesh] [Ledger] [Security]
+             ================================================================ -->
+        <section class="dev-cockpit" aria-label="Developer Orchestration Console">
+
+            <!-- Console Header with Segmented Tabs -->
+            <div class="console-header-row">
+                <div class="console-title-group">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#06B6D4" stroke-width="2.2">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                    </svg>
+                    <span style="font-size: 16px; font-weight: 800; color: #FFFFFF;">Under the Hood</span>
+                </div>
+
+                <!-- Tab Buttons -->
+                <div class="console-tabs" role="tablist" aria-label="Console Views">
+                    <button class="tab-btn active" role="tab" aria-selected="true" data-tab="mesh" onclick="switchConsoleTab('mesh')">
+                        <span>📡</span>
+                        <span>Mesh</span>
+                    </button>
+                    <button class="tab-btn" role="tab" aria-selected="false" data-tab="ledger" onclick="switchConsoleTab('ledger')">
+                        <span>🏦</span>
+                        <span>Ledger</span>
+                    </button>
+                    <button class="tab-btn" role="tab" aria-selected="false" data-tab="security" onclick="switchConsoleTab('security')">
+                        <span>🛡️</span>
+                        <span>Security</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- ============================================================
+                 TAB 1: MESH TAB
+                 ============================================================ -->
+            <div class="tab-panel active" id="tab-mesh" role="tabpanel">
+
+                <!-- 1. Numbered Action Bar -->
+                <div class="mesh-actions-bar">
+                    <div class="mesh-actions-left">
+                        <button class="btn-action-step" onclick="gossip()">
+                            <span class="step-badge">1</span>
+                            <span>Gossip Round</span>
+                        </button>
+                        <button class="btn-action-step" onclick="flushBridges()">
+                            <span class="step-badge">2</span>
+                            <span>Bridge Upload</span>
+                        </button>
+                    </div>
+                    <div>
+                        <button class="btn-action-reset" onclick="resetMesh()" title="Clear all packets and idempotency cache">
+                            <span>🗑</span>
+                            <span>Reset</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 2. Interactive SVG Mesh Topology Graph -->
+                <div class="mesh-graph-card">
+                    <div class="dev-card-header" style="border-bottom:none; margin-bottom: 0;">
+                        <span class="dev-card-title">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00D26A" stroke-width="2.5">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                            </svg>
+                            Live Bluetooth Mesh Topology & Carrier Links
+                        </span>
+                        <span class="small" id="cacheInfo">Loading engine...</span>
+                    </div>
+
+                    <div class="mesh-svg-container">
+                        <svg id="meshSvg" viewBox="0 0 680 320" xmlns="http://www.w3.org/2000/svg">
+                            <!-- Dynamically generated by app.js renderMeshGraph() -->
+                        </svg>
+                    </div>
+                </div>
+
+                <!-- 3. Attack Lab -->
+                <div class="attack-lab-card">
+                    <div class="attack-lab-header">
+                        <div class="attack-lab-title">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F43F5E" stroke-width="2.2">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                                <line x1="12" y1="8" x2="12" y2="12"></line>
+                                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                            </svg>
+                            <span>Attack Lab — Non-Repudiation Defense</span>
+                        </div>
+                        <span class="attack-lab-badge">Threat Simulation</span>
+                    </div>
+                    <p class="attack-lab-desc">
+                        Eve forges a payment as Alice; ECDSA verification rejects it with <code>invalid_sender_signature</code>.
+                    </p>
+                    <div class="attack-lab-controls">
+                        <button class="btn-attack-spoof" onclick="sendSpoofedPacket()">
+                            <span>⚔️</span>
+                            <span>Inject Spoofed Packet (Eve)</span>
+                        </button>
+                        <div id="attackStatusIndicator" class="attack-status-indicator">
+                            <span>Status: Ready to test</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. Compact Mesh Device Cards -->
+                <div class="dev-card">
+                    <div class="dev-card-header">
+                        <span class="dev-card-title">📱 Mesh Virtual Devices</span>
+                        <span class="small">Holding packet buffers</span>
+                    </div>
+                    <div id="devices"></div>
+                </div>
+
+            </div>
+
+            <!-- ============================================================
+                 TAB 2: LEDGER TAB
+                 ============================================================ -->
+            <div class="tab-panel" id="tab-ledger" role="tabpanel">
+
+                <!-- Bank Accounts & Keys -->
+                <div class="dev-card">
+                    <div class="dev-card-header">
+                        <span class="dev-card-title">🏦 Bank Accounts & Public Keys</span>
+                        <span class="small">Cryptographic Identities</span>
+                    </div>
+                    <table id="accounts-table">
+                        <thead>
+                            <tr>
+                                <th>VPA</th>
+                                <th>Account Holder</th>
+                                <th>Ledger Balance</th>
+                                <th>Registered Public Key (ECDSA)</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+
+                <!-- Transaction Ledger -->
+                <div class="dev-card">
+                    <div class="dev-card-header">
+                        <span class="dev-card-title">📜 Immutable Transaction Ledger</span>
+                        <span class="small">Settled via Bridge Relays</span>
+                    </div>
+                    <table id="tx-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>From</th>
+                                <th>To</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Bridge Node</th>
+                                <th>Hops</th>
+                                <th>Settled At</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+
+                <!-- Ingestion Telemetry Activity Log -->
+                <div class="dev-card">
+                    <div class="dev-card-header">
+                        <span class="dev-card-title">🪵 Live Ingestion Telemetry</span>
+                        <span class="small">Audit Log</span>
+                    </div>
+                    <div id="log"></div>
+                </div>
+
+            </div>
+
+            <!-- ============================================================
+                 TAB 3: SECURITY TAB
+                 ============================================================ -->
+            <div class="tab-panel" id="tab-security" role="tabpanel">
+
+                <div class="security-grid">
+
+                    <!-- Feature Card 1 -->
+                    <div class="security-feature-card">
+                        <div class="security-card-header">
+                            <div class="security-icon-box">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2">
+                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                </svg>
+                            </div>
+                            <span class="security-card-title">Hybrid Cryptography</span>
+                        </div>
+                        <div class="security-spec-tag">RSA-2048 OAEP + AES-256-GCM</div>
+                        <p class="security-card-desc">
+                            End-to-end payload confidentiality. Untrusted intermediary mesh devices cannot read or modify payment data.
+                        </p>
+                    </div>
+
+                    <!-- Feature Card 2 -->
+                    <div class="security-feature-card">
+                        <div class="security-card-header">
+                            <div class="security-icon-box">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00D26A" stroke-width="2">
+                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                                    <polyline points="9 12 11 14 15 10"></polyline>
+                                </svg>
+                            </div>
+                            <span class="security-card-title">Sender Authenticity</span>
+                        </div>
+                        <div class="security-spec-tag">ECDSA NIST P-256 (secp256r1)</div>
+                        <p class="security-card-desc">
+                            Non-repudiation guarantee. Sender signs canonical payload with device private key; bank verifies before debit.
+                        </p>
+                    </div>
+
+                    <!-- Feature Card 3 -->
+                    <div class="security-feature-card">
+                        <div class="security-card-header">
+                            <div class="security-icon-box">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#06B6D4" stroke-width="2">
+                                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                                </svg>
+                            </div>
+                            <span class="security-card-title">Atomic Idempotency Engine</span>
+                        </div>
+                        <div class="security-spec-tag">ConcurrentHashMap / Redis SETNX</div>
+                        <p class="security-card-desc">
+                            Exactly-once settlement. SHA-256 ciphertext hash claim deduplicates simultaneous bridge uploads before decryption.
+                        </p>
+                    </div>
+
+                    <!-- Feature Card 4 -->
+                    <div class="security-feature-card">
+                        <div class="security-card-header">
+                            <div class="security-icon-box">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <polyline points="12 6 12 12 16 14"></polyline>
+                                </svg>
+                            </div>
+                            <span class="security-card-title">Replay Attack Protection</span>
+                        </div>
+                        <div class="security-spec-tag">24-Hour Validity Window + UUID Nonce</div>
+                        <p class="security-card-desc">
+                            Server rejects stale or future-dated packets. Dynamic UUID nonces ensure repeat payments are unique.
+                        </p>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" aria-live="polite"></div>
+
+</div>
+
+<!-- Client App Script -->
+<script src="/app.js"></script>
+</body>
+</html>

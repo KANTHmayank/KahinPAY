@@ -21,6 +21,9 @@ public class Account {
     @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal balance;
 
+    @Column(length = 512)
+    private String publicKey; // Base64-encoded X.509 EC public key (ECDSA)
+
     @Version  // Optimistic locking — prevents lost updates on concurrent transfers
     private Long version;
 
@@ -32,6 +35,13 @@ public class Account {
         this.balance = balance;
     }
 
+    public Account(String vpa, String holderName, BigDecimal balance, String publicKey) {
+        this.vpa = vpa;
+        this.holderName = holderName;
+        this.balance = balance;
+        this.publicKey = publicKey;
+    }
+
     public String getVpa() { return vpa; }
     public void setVpa(String vpa) { this.vpa = vpa; }
 
@@ -40,6 +50,9 @@ public class Account {
 
     public BigDecimal getBalance() { return balance; }
     public void setBalance(BigDecimal balance) { this.balance = balance; }
+
+    public String getPublicKey() { return publicKey; }
+    public void setPublicKey(String publicKey) { this.publicKey = publicKey; }
 
     public Long getVersion() { return version; }
     public void setVersion(Long version) { this.version = version; }

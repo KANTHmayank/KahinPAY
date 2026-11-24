@@ -1,8 +1,8 @@
-# UPI Offline Mesh — Demo
+# KahinPAY — Pay from anywhere.
 
-A Spring Boot backend that demonstrates **offline UPI payments routed through a Bluetooth-style mesh network**. You're in a basement with zero connectivity. You send your friend ₹500. Your phone encrypts the payment, broadcasts it to nearby phones, and the packet hops device-to-device until *some* phone walks outside, gets 4G, and silently uploads it to this backend. The backend decrypts, deduplicates, and settles.
+A high-performance offline fintech payment engine demonstrating **offline UPI payments routed through a Bluetooth-style delay-tolerant mesh network**. You're in a basement or disaster zone with zero connectivity. You send your friend ₹500. Your phone cryptographically signs and encrypts the payment, broadcasts it to nearby phones via Bluetooth LE, and the packet hops device-to-device until *some* phone walks outside, gets 4G, and silently uploads it to this backend. The backend decrypts, verifies the sender's ECDSA signature, deduplicates via atomic idempotency (Redis/ConcurrentHashMap), and settles.
 
-This repo is the **server side** of that system, plus a software simulator of the mesh so you can demo the whole flow on a single laptop without any real Bluetooth hardware.
+**KahinPAY** includes the **server-side banking engine**, the **mobile phone-frame app UI (CRED / Navi UPI inspired)**, plus a software simulator of the mesh so you can demo the entire end-to-end flow on a single machine without physical Bluetooth hardware.
 
 ---
 
@@ -176,7 +176,11 @@ This test creates one packet, fires 3 threads at `BridgeIngestionService.ingest(
 │  [4] Freshness check: signedAt within last 24h                          │
 │       │                                                                 │
 │       ▼                                                                 │
-│  [5] SettlementService.settle()                                         │
+│  [5] DigitalSignatureService.verify()                                   │
+│       │       (ECDSA with secp256r1: verifies sender's signature        │
+│       │        against registered public key — spoofing = rejected)     │
+│       ▼                                                                 │
+│  [6] SettlementService.settle()                                         │
 │       @Transactional: debit sender, credit receiver, write ledger       │
 │       @Version on Account = optimistic locking (defense in depth)       │
 └─────────────────────────────────────────────────────────────────────────┘
@@ -241,7 +245,29 @@ An attacker who captured a ciphertext weeks ago could replay it whenever conveni
 
 See `BridgeIngestionService.java` for the freshness check.
 
+### Problem 4: Transaction Spoofing vs Confidentiality
+
+Encryption ensures privacy from intermediaries, but the bank's RSA public key is public! What stops an attacker (Eve) from crafting a forged transaction saying *"Alice pays Eve ₹500"*, encrypting it with the bank's public key, and broadcasting it?
+
+**Solution: ECDSA Digital Signatures (NIST P-256 / secp256r1).**
+
+Before encryption, the sender's device signs the canonical transaction data (`senderVpa|receiverVpa|amount|nonce|signedAt`) using their private key stored securely in hardware (simulating Android Keystore / Apple Secure Enclave).
+
+The bank server looks up Alice's registered public key and verifies `Signature.verify(AlicePublicKey, canonicalData, signature)`. If Eve tries to forge a payment or tamper with the instruction, the signature verification fails and the packet is immediately rejected with `invalid_sender_signature`.
+
+See `DigitalSignatureService.java` and `BridgeIngestionService.java`.
+
 ---
+
+## Distributed Deployment with Redis & Docker
+
+The system features an active-fallback architecture:
+1. **Zero-Setup Mode (Default):** Runs immediately in memory with `ConcurrentHashMap`.
+2. **Distributed Production Mode:** Spin up Redis via Docker Compose:
+   ```bash
+   docker compose up -d
+   ```
+   Set `upi.mesh.idempotency.use-redis=true` in `application.properties`. Idempotency claims will use atomic Redis `SETNX` commands with a 24-hour TTL, coordinated across multiple backend instances. Inspect keys in real time at **http://localhost:8081** (Redis Commander).
 
 ## File-by-file walkthrough
 

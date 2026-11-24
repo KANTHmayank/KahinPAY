@@ -1,5 +1,6 @@
 package com.demo.upimesh;
 
+import com.demo.upimesh.crypto.DigitalSignatureService;
 import com.demo.upimesh.crypto.HybridCryptoService;
 import com.demo.upimesh.crypto.ServerKeyHolder;
 import com.demo.upimesh.model.MeshPacket;
@@ -14,14 +15,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import java.math.BigDecimal;
+import java.security.KeyPair;
+import java.util.UUID;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * The killer test: simulates the "three bridges deliver at the same instant"
- * scenario the user explicitly cared about.
+ * Concurrency, Cryptographic Integrity, and Authenticity test suite.
  */
 @SpringBootTest
 class IdempotencyConcurrencyTest {
@@ -32,6 +34,7 @@ class IdempotencyConcurrencyTest {
     @Autowired private AccountRepository accounts;
     @Autowired private HybridCryptoService crypto;
     @Autowired private ServerKeyHolder serverKey;
+    @Autowired private DigitalSignatureService signatureService;
 
     @BeforeEach
     void clear() {
@@ -96,9 +99,14 @@ class IdempotencyConcurrencyTest {
 
     @Test
     void encryptDecryptRoundTrip() throws Exception {
+        KeyPair kp = signatureService.generateKeyPair();
+        String canonical = signatureService.canonicalPayload(
+                "alice@demo", "bob@demo", new BigDecimal("123.45"), "nonce-1", 1700000000000L);
+        String sig = signatureService.sign(canonical, kp.getPrivate());
+
         PaymentInstruction original = new PaymentInstruction(
                 "alice@demo", "bob@demo", new BigDecimal("123.45"),
-                "abcdef", "nonce-1", System.currentTimeMillis());
+                "abcdef", "nonce-1", 1700000000000L, sig);
 
         String ct = crypto.encrypt(original, serverKey.getPublicKey());
         PaymentInstruction decrypted = crypto.decrypt(ct);
@@ -107,5 +115,64 @@ class IdempotencyConcurrencyTest {
         assertEquals(original.getReceiverVpa(), decrypted.getReceiverVpa());
         assertEquals(0, original.getAmount().compareTo(decrypted.getAmount()));
         assertEquals(original.getNonce(), decrypted.getNonce());
+        assertEquals(original.getSenderSignature(), decrypted.getSenderSignature());
+        assertTrue(signatureService.verify(canonical, decrypted.getSenderSignature(), kp.getPublic()));
+    }
+
+    @Test
+    void spoofedSenderPaymentIsRejectedWhenSignatureDoesNotMatchSenderKey() throws Exception {
+        // Eve attempts to forge a payment instructing ₹500 from Alice to Eve,
+        // but signs it with Eve's newly generated keypair instead of Alice's registered key.
+        KeyPair attackerKeyPair = signatureService.generateKeyPair();
+
+        String senderVpa = "alice@demo";
+        String receiverVpa = "bob@demo";
+        BigDecimal amount = new BigDecimal("500.00");
+        String nonce = UUID.randomUUID().toString();
+        long now = System.currentTimeMillis();
+
+        String canonical = signatureService.canonicalPayload(senderVpa, receiverVpa, amount, nonce, now);
+        String forgedSignature = signatureService.sign(canonical, attackerKeyPair.getPrivate());
+
+        PaymentInstruction forgedInstruction = new PaymentInstruction(
+                senderVpa, receiverVpa, amount, "fakePinHash", nonce, now, forgedSignature);
+
+        String ciphertext = crypto.encrypt(forgedInstruction, serverKey.getPublicKey());
+
+        MeshPacket forgedPacket = new MeshPacket();
+        forgedPacket.setPacketId(UUID.randomUUID().toString());
+        forgedPacket.setTtl(5);
+        forgedPacket.setCreatedAt(now);
+        forgedPacket.setCiphertext(ciphertext);
+
+        BridgeIngestionService.IngestResult result = bridge.ingest(forgedPacket, "bridge-mallory", 2);
+
+        assertEquals("INVALID", result.outcome(), "Spoofed packet must be rejected");
+        assertEquals("invalid_sender_signature", result.reason(), "Must fail with invalid signature reason");
+    }
+
+    @Test
+    void missingSenderSignatureIsRejected() throws Exception {
+        String senderVpa = "alice@demo";
+        String receiverVpa = "bob@demo";
+        BigDecimal amount = new BigDecimal("50.00");
+        String nonce = UUID.randomUUID().toString();
+        long now = System.currentTimeMillis();
+
+        PaymentInstruction unsignedInstruction = new PaymentInstruction(
+                senderVpa, receiverVpa, amount, "pin", nonce, now, null);
+
+        String ciphertext = crypto.encrypt(unsignedInstruction, serverKey.getPublicKey());
+
+        MeshPacket unsignedPacket = new MeshPacket();
+        unsignedPacket.setPacketId(UUID.randomUUID().toString());
+        unsignedPacket.setTtl(5);
+        unsignedPacket.setCreatedAt(now);
+        unsignedPacket.setCiphertext(ciphertext);
+
+        BridgeIngestionService.IngestResult result = bridge.ingest(unsignedPacket, "bridge-unsigned", 1);
+
+        assertEquals("INVALID", result.outcome());
+        assertEquals("missing_sender_signature", result.reason());
     }
 }

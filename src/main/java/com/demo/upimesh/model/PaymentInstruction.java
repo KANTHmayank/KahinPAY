@@ -23,6 +23,7 @@ public class PaymentInstruction {
     private String pinHash;
     private String nonce;     // UUID, unique per payment intent
     private Long signedAt;    // epoch millis, when sender signed
+    private String senderSignature; // Base64 ECDSA signature over canonical fields
 
     public PaymentInstruction() {}
 
@@ -34,6 +35,17 @@ public class PaymentInstruction {
         this.pinHash = pinHash;
         this.nonce = nonce;
         this.signedAt = signedAt;
+    }
+
+    public PaymentInstruction(String senderVpa, String receiverVpa, BigDecimal amount,
+                              String pinHash, String nonce, Long signedAt, String senderSignature) {
+        this.senderVpa = senderVpa;
+        this.receiverVpa = receiverVpa;
+        this.amount = amount;
+        this.pinHash = pinHash;
+        this.nonce = nonce;
+        this.signedAt = signedAt;
+        this.senderSignature = senderSignature;
     }
 
     public String getSenderVpa() { return senderVpa; }
@@ -53,4 +65,7 @@ public class PaymentInstruction {
 
     public Long getSignedAt() { return signedAt; }
     public void setSignedAt(Long signedAt) { this.signedAt = signedAt; }
+
+    public String getSenderSignature() { return senderSignature; }
+    public void setSenderSignature(String senderSignature) { this.senderSignature = senderSignature; }
 }

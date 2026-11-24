@@ -30,6 +30,8 @@ public class ApiController {
     @Autowired private AccountRepository accountRepo;
     @Autowired private TransactionRepository txRepo;
     @Autowired private IdempotencyService idempotency;
+    @Autowired private com.demo.upimesh.crypto.DigitalSignatureService signatureService;
+    @Autowired private com.demo.upimesh.crypto.HybridCryptoService crypto;
 
     // ------------------------------------------------------------------ key
 
@@ -65,6 +67,42 @@ public class ApiController {
         ));
     }
 
+    /**
+     * Demo helper: simulate an adversary attempting to forge a transaction
+     * claiming to be Alice, but signed with an attacker's unauthorized private key.
+     */
+    @PostMapping("/demo/spoof")
+    public ResponseEntity<?> demoSpoof(@RequestBody DemoSendRequest req) throws Exception {
+        java.security.KeyPair attackerKey = signatureService.generateKeyPair();
+        String nonce = UUID.randomUUID().toString();
+        long now = System.currentTimeMillis();
+
+        String canonical = signatureService.canonicalPayload(
+                req.senderVpa, req.receiverVpa, req.amount, nonce, now);
+        String fakeSig = signatureService.sign(canonical, attackerKey.getPrivate());
+
+        PaymentInstruction instruction = new PaymentInstruction(
+                req.senderVpa, req.receiverVpa, req.amount, "attackerPinHash", nonce, now, fakeSig);
+
+        String ciphertext = crypto.encrypt(instruction, serverKey.getPublicKey());
+
+        MeshPacket packet = new MeshPacket();
+        packet.setPacketId(UUID.randomUUID().toString());
+        packet.setTtl(req.ttl == null ? 5 : req.ttl);
+        packet.setCreatedAt(now);
+        packet.setCiphertext(ciphertext);
+
+        String startDevice = req.startDevice == null ? "phone-stranger1" : req.startDevice;
+        mesh.inject(startDevice, packet);
+
+        return ResponseEntity.ok(Map.of(
+                "packetId", packet.getPacketId(),
+                "ciphertextPreview", packet.getCiphertext().substring(0, 64) + "...",
+                "injectedAt", startDevice,
+                "status", "SPOOFED_PACKET_INJECTED"
+        ));
+    }
+
     public static class DemoSendRequest {
         public String senderVpa;
         public String receiverVpa;
@@ -91,7 +129,9 @@ public class ApiController {
         }
         return Map.of(
                 "devices", deviceData,
-                "idempotencyCacheSize", idempotency.size()
+                "idempotencyCacheSize", idempotency.size(),
+                "idempotencyMode", idempotency.isUsingRedis() ? "Redis (Distributed SETNX)" : "In-Memory (ConcurrentHashMap)",
+                "signatureAlgorithm", "ECDSA (NIST P-256 / SHA256withECDSA)"
         );
     }
 

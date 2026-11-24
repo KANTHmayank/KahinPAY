@@ -1,6 +1,9 @@
 package com.demo.upimesh.service;
 
+import com.demo.upimesh.crypto.DigitalSignatureService;
 import com.demo.upimesh.crypto.HybridCryptoService;
+import com.demo.upimesh.model.Account;
+import com.demo.upimesh.model.AccountRepository;
 import com.demo.upimesh.model.MeshPacket;
 import com.demo.upimesh.model.PaymentInstruction;
 import com.demo.upimesh.model.Transaction;
@@ -10,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.security.PublicKey;
 import java.time.Instant;
 
 /**
@@ -22,7 +26,9 @@ import java.time.Instant;
  *   3. Decrypt the ciphertext with the server's private key.
  *      - If decryption fails: tampered or junk. Reject.
  *   4. Check freshness — reject if signedAt is too old (replay protection).
- *   5. Hand off to SettlementService for the actual debit/credit.
+ *   5. Verify Sender Digital Signature (ECDSA) — proves authenticity & non-repudiation.
+ *      - If signature missing, invalid, or forged: reject immediately.
+ *   6. Hand off to SettlementService for the actual debit/credit.
  */
 @Service
 public class BridgeIngestionService {
@@ -32,6 +38,8 @@ public class BridgeIngestionService {
     @Autowired private HybridCryptoService crypto;
     @Autowired private IdempotencyService idempotency;
     @Autowired private SettlementService settlement;
+    @Autowired private DigitalSignatureService signatureService;
+    @Autowired private AccountRepository accounts;
 
     @Value("${upi.mesh.packet-max-age-seconds:86400}")
     private long maxAgeSeconds;
@@ -66,6 +74,41 @@ public class BridgeIngestionService {
             }
             if (ageSeconds < -300) { // small clock-skew tolerance
                 return IngestResult.invalid(packetHash, "future_dated");
+            }
+
+            // ---- Digital Signature Verification (Authenticity & Non-Repudiation) ----
+            if (instruction.getSenderSignature() == null || instruction.getSenderSignature().isBlank()) {
+                log.warn("Packet {} missing sender signature", packetHash.substring(0, 12) + "...");
+                return IngestResult.invalid(packetHash, "missing_sender_signature");
+            }
+
+            Account senderAccount = accounts.findById(instruction.getSenderVpa()).orElse(null);
+            if (senderAccount == null) {
+                log.warn("Sender {} not found for packet {}", instruction.getSenderVpa(), packetHash.substring(0, 12) + "...");
+                return IngestResult.invalid(packetHash, "unknown_sender");
+            }
+
+            if (senderAccount.getPublicKey() == null || senderAccount.getPublicKey().isBlank()) {
+                log.warn("Sender {} has no registered public key", instruction.getSenderVpa());
+                return IngestResult.invalid(packetHash, "unregistered_sender_key");
+            }
+
+            try {
+                PublicKey senderPublicKey = signatureService.decodePublicKey(senderAccount.getPublicKey());
+                String canonical = signatureService.canonicalPayload(
+                        instruction.getSenderVpa(),
+                        instruction.getReceiverVpa(),
+                        instruction.getAmount(),
+                        instruction.getNonce(),
+                        instruction.getSignedAt()
+                );
+                if (!signatureService.verify(canonical, instruction.getSenderSignature(), senderPublicKey)) {
+                    log.warn("Digital signature verification failed for sender {}", instruction.getSenderVpa());
+                    return IngestResult.invalid(packetHash, "invalid_sender_signature");
+                }
+            } catch (Exception e) {
+                log.warn("Signature verification error for sender {}: {}", instruction.getSenderVpa(), e.getMessage());
+                return IngestResult.invalid(packetHash, "signature_verification_error");
             }
 
             // ---- Settle ----
