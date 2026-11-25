@@ -188,19 +188,60 @@ function closeResultSheet() {
     resetTimeline();
 }
 
-// PIN dot visualizer
+// PIN dot visualizer & digits-only enforcement
+function syncPinDots(val) {
+    for (let i = 1; i <= 4; i++) {
+        const dot = document.getElementById(`pinDot${i}`);
+        if (dot) {
+            if (i <= val.length) dot.classList.add('filled');
+            else dot.classList.remove('filled');
+        }
+    }
+}
+
+function clearPinError() {
+    const pinSection = document.getElementById('pinSection') || document.querySelector('.pin-section');
+    const pinErrorMsg = document.getElementById('pinErrorMsg');
+    if (pinSection) pinSection.classList.remove('pin-error');
+    if (pinErrorMsg) {
+        pinErrorMsg.textContent = '';
+        pinErrorMsg.classList.remove('visible');
+    }
+}
+
+function showPinError(msg) {
+    const pinSection = document.getElementById('pinSection') || document.querySelector('.pin-section');
+    const pinErrorMsg = document.getElementById('pinErrorMsg');
+    if (pinSection) {
+        pinSection.classList.remove('pin-error');
+        void pinSection.offsetWidth;
+        pinSection.classList.add('pin-error');
+    }
+    if (pinErrorMsg) {
+        pinErrorMsg.textContent = msg;
+        pinErrorMsg.classList.add('visible');
+    }
+}
+
 function setupPinDots() {
     const pinInput = document.getElementById('pin');
+    const pinSection = document.getElementById('pinSection') || document.querySelector('.pin-section');
     if (!pinInput) return;
 
+    syncPinDots(pinInput.value || '');
+
+    if (pinSection) {
+        pinSection.addEventListener('click', () => pinInput.focus());
+    }
+
     pinInput.addEventListener('input', () => {
-        const val = pinInput.value;
-        for (let i = 1; i <= 4; i++) {
-            const dot = document.getElementById(`pinDot${i}`);
-            if (dot) {
-                if (i <= val.length) dot.classList.add('filled');
-                else dot.classList.remove('filled');
-            }
+        const cleaned = pinInput.value.replace(/\D/g, '').slice(0, 4);
+        if (pinInput.value !== cleaned) {
+            pinInput.value = cleaned;
+        }
+        syncPinDots(cleaned);
+        if (cleaned.length > 0) {
+            clearPinError();
         }
     });
 }
@@ -424,9 +465,10 @@ function animateBridgeUpload(outcome, txId, reason) {
 
 const KahinSimEngine = {
     accounts: [
-        { vpa: 'alice@demo', holderName: 'Alice Sharma', balance: 5000.00, publicKey: 'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE7pL8R4Q3o6X8h7F7vY9l1bK4n8+e7cW5mR2s9qV1tX4xZ8mP0uL6k2e9wY1a' },
-        { vpa: 'bob@demo', holderName: 'Bob Verma', balance: 2000.00, publicKey: 'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE2xN9vK3p8rX1l5q9wY4a8bK7e6mR1tS5vX9zP2oU7eY4xW8mP1uL6k3e0zV2' },
-        { vpa: 'charlie@demo', holderName: 'Charlie Patel', balance: 3500.00, publicKey: 'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE9wY4a8bK7e6mR1tS5vX9zP2oU7eY4xW8mP1uL6k3e0zV2xN9vK3p8rX1l5q9' }
+        { vpa: 'alice@demo', holderName: 'Alice', balance: 5000.00, publicKey: 'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE7pL8R4Q3o6X8h7F7vY9l1bK4n8+e7cW5mR2s9qV1tX4xZ8mP0uL6k2e9wY1a' },
+        { vpa: 'bob@demo', holderName: 'Bob', balance: 1000.00, publicKey: 'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE2xN9vK3p8rX1l5q9wY4a8bK7e6mR1tS5vX9zP2oU7eY4xW8mP1uL6k3e0zV2' },
+        { vpa: 'carol@demo', holderName: 'Carol', balance: 2500.00, publicKey: 'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE9wY4a8bK7e6mR1tS5vX9zP2oU7eY4xW8mP1uL6k3e0zV2xN9vK3p8rX1l5q9' },
+        { vpa: 'dave@demo', holderName: 'Dave', balance: 500.00, publicKey: 'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE4mT7zQ2p9wL6vX3bN8cR1yK5hJ2sF4gD9aP6mV3xZ0uL8k1e7wY2qB' }
     ],
     devices: [
         { deviceId: 'phone-alice', hasInternet: false, packetCount: 0, packetIds: [] },
@@ -460,13 +502,22 @@ const KahinSimEngine = {
     },
 
     sendPacket({ senderVpa, receiverVpa, amount, pin, ttl, startDevice }) {
+        const cleanPin = pin != null ? String(pin).trim() : '';
+        if (!/^\d{4}$/.test(cleanPin)) {
+            throw new Error('4-digit UPI PIN is mandatory to authorize and sign payment.');
+        }
+        const parsedAmount = parseFloat(amount);
+        if (isNaN(parsedAmount) || parsedAmount <= 0) {
+            throw new Error('Payment amount must be greater than zero.');
+        }
+
         const packetId = Math.random().toString(16).substring(2, 10);
         const packet = {
             packetId,
             senderVpa: senderVpa || 'alice@demo',
             receiverVpa: receiverVpa || 'bob@demo',
-            amount: parseFloat(amount) || 500.00,
-            pin,
+            amount: parsedAmount,
+            pin: cleanPin,
             ttl: ttl || 5,
             isSpoofed: false,
             hops: 0
@@ -562,6 +613,13 @@ const KahinSimEngine = {
                     outcome: 'INVALID',
                     reason: 'invalid_sender_signature'
                 });
+            } else if (!pkt.pin || !/^\d{4}$/.test(String(pkt.pin).trim())) {
+                results.push({
+                    bridgeNode: 'phone-bridge',
+                    packetId: pid,
+                    outcome: 'INVALID',
+                    reason: 'missing_upi_pin'
+                });
             } else if (this.idempotencyStore.has(pid)) {
                 results.push({
                     bridgeNode: 'phone-bridge',
@@ -607,9 +665,10 @@ const KahinSimEngine = {
 
     reset() {
         this.accounts = [
-            { vpa: 'alice@demo', holderName: 'Alice Sharma', balance: 5000.00, publicKey: 'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE7pL8R4Q3o6X8h7F7vY9l1bK4n8+e7cW5mR2s9qV1tX4xZ8mP0uL6k2e9wY1a' },
-            { vpa: 'bob@demo', holderName: 'Bob Verma', balance: 2000.00, publicKey: 'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE2xN9vK3p8rX1l5q9wY4a8bK7e6mR1tS5vX9zP2oU7eY4xW8mP1uL6k3e0zV2' },
-            { vpa: 'charlie@demo', holderName: 'Charlie Patel', balance: 3500.00, publicKey: 'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE9wY4a8bK7e6mR1tS5vX9zP2oU7eY4xW8mP1uL6k3e0zV2xN9vK3p8rX1l5q9' }
+            { vpa: 'alice@demo', holderName: 'Alice', balance: 5000.00, publicKey: 'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE7pL8R4Q3o6X8h7F7vY9l1bK4n8+e7cW5mR2s9qV1tX4xZ8mP0uL6k2e9wY1a' },
+            { vpa: 'bob@demo', holderName: 'Bob', balance: 1000.00, publicKey: 'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE2xN9vK3p8rX1l5q9wY4a8bK7e6mR1tS5vX9zP2oU7eY4xW8mP1uL6k3e0zV2' },
+            { vpa: 'carol@demo', holderName: 'Carol', balance: 2500.00, publicKey: 'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE9wY4a8bK7e6mR1tS5vX9zP2oU7eY4xW8mP1uL6k3e0zV2xN9vK3p8rX1l5q9' },
+            { vpa: 'dave@demo', holderName: 'Dave', balance: 500.00, publicKey: 'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE4mT7zQ2p9wL6vX3bN8cR1yK5hJ2sF4gD9aP6mV3xZ0uL8k1e7wY2qB' }
         ];
         this.devices.forEach(d => { d.packetIds = []; });
         this.packetStore.clear();
@@ -630,22 +689,35 @@ if (typeof globalThis !== 'undefined') {
 // Unified API Gateway: connects to backend if alive, or routes to KahinSimEngine seamlessly
 async function apiFetch(url, options = {}) {
     if (!isSimulationMode) {
+        let res;
         try {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 1600);
-            const res = await fetch(url, { ...options, signal: controller.signal });
+            res = await fetch(url, { ...options, signal: controller.signal });
             clearTimeout(timeoutId);
-            if (res.ok) {
-                return await res.json();
-            } else if (res.status === 404) {
-                throw new Error('API 404');
-            }
         } catch (err) {
             isSimulationMode = true;
             console.info('Backend API not detected. KahinPAY Edge Simulation Engine active.');
             const badgeEl = document.getElementById('idempotencyBadge');
             if (badgeEl) badgeEl.textContent = '⚡ Engine: Vercel Edge (Zero-Coldstart)';
             showToast('KahinPAY Edge Engine active (Instant Load)', 'info');
+            res = null;
+        }
+
+        if (res) {
+            if (res.ok) {
+                return await res.json();
+            }
+            if (res.status === 404) {
+                isSimulationMode = true;
+                console.info('Backend API returned 404. KahinPAY Edge Simulation Engine active.');
+                const badgeEl = document.getElementById('idempotencyBadge');
+                if (badgeEl) badgeEl.textContent = '⚡ Engine: Vercel Edge (Zero-Coldstart)';
+                showToast('KahinPAY Edge Engine active (Instant Load)', 'info');
+            } else {
+                const errPayload = await res.json().catch(() => ({}));
+                throw new Error(errPayload.message || errPayload.error || `Request failed (${res.status})`);
+            }
         }
     }
 
@@ -771,12 +843,40 @@ async function refresh() {
 
 // Handler: Inject Signed Packet (Step 1)
 async function sendPacket() {
+    const senderVpa = document.getElementById('senderVpa').value;
+    const receiverVpa = document.getElementById('receiverVpa').value;
+    const amountEl = document.getElementById('amount');
+    const pinEl = document.getElementById('pin');
+    const amount = parseFloat(amountEl?.value);
+    const pin = (pinEl?.value || '').trim();
+
+    if (isNaN(amount) || amount <= 0) {
+        showToast('Please enter a valid payment amount greater than ₹0', 'error');
+        if (amountEl) amountEl.focus();
+        return;
+    }
+
+    if (senderVpa === receiverVpa) {
+        showToast('Sender and receiver cannot be the same account', 'error');
+        return;
+    }
+
+    if (!/^\d{4}$/.test(pin)) {
+        showPinError('Please enter your 4-digit UPI PIN before paying.');
+        log('🔒 Blocked: Cannot sign or encrypt payload without a 4-digit UPI PIN');
+        showToast('4-digit UPI PIN is mandatory to pay', 'error');
+        if (pinEl) pinEl.focus();
+        return;
+    }
+
+    clearPinError();
+
     try {
         const body = {
-            senderVpa: document.getElementById('senderVpa').value,
-            receiverVpa: document.getElementById('receiverVpa').value,
-            amount: parseFloat(document.getElementById('amount').value),
-            pin: document.getElementById('pin').value,
+            senderVpa,
+            receiverVpa,
+            amount,
+            pin,
             ttl: 5,
             startDevice: 'phone-alice'
         };
@@ -799,7 +899,13 @@ async function sendPacket() {
         showToast(`Signed ₹${body.amount} payment injected into offline mesh!`, 'success');
         refresh();
     } catch (e) {
-        showToast('Error injecting payment', 'error');
+        const msg = e?.message || 'Error injecting payment';
+        if (msg.toLowerCase().includes('pin')) {
+            showPinError(msg);
+            if (pinEl) pinEl.focus();
+        }
+        log(`❌ Blocked: ${msg}`);
+        showToast(msg, 'error');
         console.error(e);
     }
 }

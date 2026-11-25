@@ -175,4 +175,41 @@ class IdempotencyConcurrencyTest {
         assertEquals("INVALID", result.outcome());
         assertEquals("missing_sender_signature", result.reason());
     }
+
+    @Test
+    void emptyOrInvalidPinIsRejectedBeforeCreatingPacket() {
+        assertThrows(IllegalArgumentException.class, () ->
+                demoService.createPacket("alice@demo", "bob@demo", new BigDecimal("50.00"), "", 5));
+        assertThrows(IllegalArgumentException.class, () ->
+                demoService.createPacket("alice@demo", "bob@demo", new BigDecimal("50.00"), null, 5));
+        assertThrows(IllegalArgumentException.class, () ->
+                demoService.createPacket("alice@demo", "bob@demo", new BigDecimal("50.00"), "12", 5));
+        assertThrows(IllegalArgumentException.class, () ->
+                demoService.createPacket("alice@demo", "bob@demo", new BigDecimal("50.00"), "abcd", 5));
+    }
+
+    @Test
+    void packetWithMissingPinHashIsRejectedByBridge() throws Exception {
+        String senderVpa = "alice@demo";
+        String receiverVpa = "bob@demo";
+        BigDecimal amount = new BigDecimal("50.00");
+        String nonce = UUID.randomUUID().toString();
+        long now = System.currentTimeMillis();
+
+        PaymentInstruction noPinInstruction = new PaymentInstruction(
+                senderVpa, receiverVpa, amount, "", nonce, now, "sig");
+
+        String ciphertext = crypto.encrypt(noPinInstruction, serverKey.getPublicKey());
+
+        MeshPacket noPinPacket = new MeshPacket();
+        noPinPacket.setPacketId(UUID.randomUUID().toString());
+        noPinPacket.setTtl(5);
+        noPinPacket.setCreatedAt(now);
+        noPinPacket.setCiphertext(ciphertext);
+
+        BridgeIngestionService.IngestResult result = bridge.ingest(noPinPacket, "bridge-nopin", 1);
+
+        assertEquals("INVALID", result.outcome());
+        assertEquals("missing_upi_pin", result.reason());
+    }
 }

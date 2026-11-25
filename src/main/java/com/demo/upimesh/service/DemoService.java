@@ -76,6 +76,10 @@ public class DemoService {
      */
     public MeshPacket createPacket(String senderVpa, String receiverVpa,
                                    BigDecimal amount, String pin, int ttl) throws Exception {
+        if (pin == null || !pin.trim().matches("\\d{4}")) {
+            throw new IllegalArgumentException("A 4-digit UPI PIN is mandatory to authorize and sign payment");
+        }
+        String normalizedPin = pin.trim();
         String nonce = UUID.randomUUID().toString();
         long signedAt = Instant.now().toEpochMilli();
 
@@ -100,7 +104,7 @@ public class DemoService {
                 senderVpa,
                 receiverVpa,
                 amount,
-                sha256Hex(pin),
+                sha256Hex(normalizedPin),
                 nonce,
                 signedAt,
                 signature

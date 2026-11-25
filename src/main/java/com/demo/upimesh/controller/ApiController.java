@@ -52,8 +52,21 @@ public class ApiController {
      */
     @PostMapping("/demo/send")
     public ResponseEntity<?> demoSend(@RequestBody DemoSendRequest req) throws Exception {
+        if (req.pin == null || !req.pin.trim().matches("\\d{4}")) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "invalid_pin",
+                    "message", "4-digit UPI PIN is mandatory to encrypt and sign payment."
+            ));
+        }
+        if (req.amount == null || req.amount.signum() <= 0) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "invalid_amount",
+                    "message", "Amount must be greater than zero."
+            ));
+        }
+
         MeshPacket packet = demo.createPacket(
-                req.senderVpa, req.receiverVpa, req.amount, req.pin,
+                req.senderVpa, req.receiverVpa, req.amount, req.pin.trim(),
                 req.ttl == null ? 5 : req.ttl);
 
         String startDevice = req.startDevice == null ? "phone-alice" : req.startDevice;

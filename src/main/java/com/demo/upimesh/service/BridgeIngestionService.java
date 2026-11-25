@@ -34,6 +34,7 @@ import java.time.Instant;
 public class BridgeIngestionService {
 
     private static final Logger log = LoggerFactory.getLogger(BridgeIngestionService.class);
+    private static final String EMPTY_PIN_SHA256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 
     @Autowired private HybridCryptoService crypto;
     @Autowired private IdempotencyService idempotency;
@@ -74,6 +75,13 @@ public class BridgeIngestionService {
             }
             if (ageSeconds < -300) { // small clock-skew tolerance
                 return IngestResult.invalid(packetHash, "future_dated");
+            }
+
+            // ---- Mandatory UPI PIN authorization check ----
+            if (instruction.getPinHash() == null || instruction.getPinHash().isBlank()
+                    || EMPTY_PIN_SHA256.equals(instruction.getPinHash())) {
+                log.warn("Packet {} missing UPI PIN authorization", packetHash.substring(0, 12) + "...");
+                return IngestResult.invalid(packetHash, "missing_upi_pin");
             }
 
             // ---- Digital Signature Verification (Authenticity & Non-Repudiation) ----

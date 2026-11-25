@@ -186,16 +186,17 @@
 
                         <!-- UPI PIN Input (Dot Style) -->
                         <div>
-                            <div class="card-section-label">SECURITY PIN</div>
-                            <div class="pin-section">
+                            <div class="card-section-label">SECURITY PIN <span class="pin-required-hint">• REQUIRED</span></div>
+                            <div class="pin-section" id="pinSection">
                                 <div class="pin-dots-container" aria-hidden="true">
-                                    <div class="pin-dot filled" id="pinDot1"></div>
-                                    <div class="pin-dot filled" id="pinDot2"></div>
-                                    <div class="pin-dot filled" id="pinDot3"></div>
-                                    <div class="pin-dot filled" id="pinDot4"></div>
+                                    <div class="pin-dot" id="pinDot1"></div>
+                                    <div class="pin-dot" id="pinDot2"></div>
+                                    <div class="pin-dot" id="pinDot3"></div>
+                                    <div class="pin-dot" id="pinDot4"></div>
                                 </div>
-                                <input type="password" id="pin" value="1234" maxlength="4" class="underlying-pin-input" aria-label="4 digit UPI PIN">
+                                <input type="password" id="pin" value="" maxlength="4" inputmode="numeric" pattern="[0-9]{4}" placeholder="••••" required class="underlying-pin-input" aria-label="4 digit UPI PIN">
                             </div>
+                            <div id="pinErrorMsg" class="pin-error-msg" role="alert"></div>
                         </div>
 
                         <!-- Full-width Gradient Pay Button -->
